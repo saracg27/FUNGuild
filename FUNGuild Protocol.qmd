@@ -1,0 +1,101 @@
+---
+title: "Funguild protocol"
+format: html
+author: Sara Correa Garcia
+---
+
+# FUNGuild Protocol for ITS amplicon sequences
+
+The following protocol explains how to run the FUNGuild.py script. It requires basic knowledge of the command line, and a minimum of manipulation in R.
+
+We can download the program and follow the instructions found in: https://github.com/UMNFuN/FUNGuild
+
+### Install the program
+
+I performed this step in the command line, from the Terminal in Mac. But this can also be accomplish through the Terminal tab in RStudio.
+
+1.  Get to know where you are installing FUNGuilds. I installed it in my main user folder
+
+2.  Create a folder in within the FUNGuild folder that contains the .py program to contain your dataset. In my case, I called it grow_exp1_its.
+
+3.  Clean your taxonomy within R as usual, and export the table as a .txt with tabular separation, including the ASV or OTU id number. Export using write.table.
+
+4.  Copy the .txt clean taxonomy table and paste it in your corresponding funguild folder (grow_exp1_its).
+
+5.  Run the script FUNGuild.py.
+
+6.  Collect the new datatable with the fungal guilds metadata and analyze as needed in R.
+
+## Detailed steps
+
+#### Step 1 : Get to know where you are installing FUNGuilds. I installed it in my main user folder
+
+```{#bash}
+git clone https://github.com/UMNFuN/FUNGuild
+cd FUNGuild/
+```
+
+#### Step 2: Create a folder in within the FUNGuild folder that contains the .py program to contain your dataset. In my case, I called it grow_exp1_its.
+
+```{#bash}
+mkdir grow_exp1_its
+```
+
+#### Step 3: Clean your taxonomy within R as usual, and export the table as a .txt with tabular separation, including the ASV or OTU id number. Export using write.table.
+
+```{#r}
+## Create taxonomy table
+dim(obj1.rawits) # 3814 and 197
+taxonomy.its = as.data.frame(obj1.rawits[,ncol(obj1.rawits)]) # taxonomy from last column as independent table
+otuids.its = rownames((obj1.rawits))
+rownames(taxonomy.its) = otuids.its
+colnames(taxonomy.its) = c("Taxonomy")
+# separate taxonomic groups in variables ----
+tax.clean = separate(taxonomy.its, Taxonomy, into = c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species", "Strain"), sep = ";")
+tax.clean = tax.clean[,-which(names(tax.clean) %in% c("Species", "Strain"))]
+tax.clean = as.data.frame(tax.clean)
+levels(as.factor(tax.clean$Domain)) # 9 Domain 
+as.factor(tax.clean$Phylum) #  21 Phyla 
+as.factor(tax.clean$Class) # 63 classes
+as.factor(tax.clean$Order) # 147 orders
+as.factor(tax.clean$Family) # 309 Families
+as.factor(tax.clean$Genus) # 592 genus
+str(tax.clean)
+# eliminate the characters one by one or all using stringr package -----
+tax.clean$Domain = stringr::str_replace(tax.clean$Domain,'[k]', '')
+tax.clean$Domain = stringr::str_replace_all(tax.clean$Domain,'[__]', '')
+tax.clean$Phylum = stringr::str_replace(tax.clean$Phylum,'[p__]', '')
+tax.clean$Phylum = stringr::str_replace_all(tax.clean$Phylum,'[__]', '')
+tax.clean$Class = stringr::str_replace(tax.clean$Class,'[c__]', '')
+tax.clean$Class = stringr::str_replace_all(tax.clean$Class,'[__]', '')
+tax.clean$Order = stringr::str_replace(tax.clean$Order, '[o]', '')
+tax.clean$Order = stringr::str_replace_all(tax.clean$Order, '[__]', '')
+tax.clean$Family = stringr::str_replace(tax.clean$Family, '[f]', '')
+tax.clean$Family = stringr::str_replace_all(tax.clean$Family, '[__]', '')
+tax.clean$Genus = stringr::str_replace(tax.clean$Genus, '[g]','')
+tax.clean$Genus = stringr::str_replace_all(tax.clean$Genus, '[__]', '')
+str(tax.clean)
+write.table(tax.clean, file = here::here("data", "clean", "clean_taxonomy.txt"),sep = "\t")
+```
+
+#### Step 4: Copy the .txt clean taxonomy table and paste it in your corresponding funguild folder (grow_exp1_its).
+
+Here, I manually opened the exported clean_taxonomy.txt and readjusted the column names to match the equivalent column and to give the rownames their own column with ID. Then, I manually copy-pasted the output into the new grow_exp1_its folder within the FUNGuilds folder under my home directory.
+
+Your clean_taxonomy.txt should look something like this:
+
+![](images/image-1988736261.png)
+
+#### Step 5: Run the script FUNGuild.py.
+
+```{#bash}
+python FUNGuild.py guild -taxa grow_exp1_its/clean_taxonomy.txt
+```
+
+#### Step 6: Collect the new datatable with the fungal guilds metadata and analyze as needed in R.
+
+The output is generated automatically and consist of a .txt file with the same content and the fungal guilds metadata collated at the end. It is named the same as your original file, with an appendded ".guilds.txt" (in my example: clean_taxonomy.guilds.txt). The output column names in this example get misplaced one column to the right. I manually copy pasted the column names at the right position. From this ouptut, only guilds given at the Genus level can be used to be analyzed. Also, consider interpreting only the guilds that received and confidence ranking of highly probable. Do not interpret the ones ranked as probable or possible.
+
+Your clean_taxonomy.guilds.txt should look something like this, after manually correcting the column names:
+
+![](images/image-814970259.png)
